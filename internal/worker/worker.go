@@ -13,13 +13,15 @@ type Worker struct {
 	ID    int
 	Queue *queue.Queue
 	Store *queue.Store
+	Stats *queue.Stats
 }
 
-func NewWorker(id int, q *queue.Queue, s *queue.Store) *Worker {
+func NewWorker(id int, q *queue.Queue, s *queue.Store, stats *queue.Stats) *Worker {
 	return &Worker{
 		ID:    id,
 		Queue: q,
 		Store: s,
+		Stats: stats,
 	}
 }
 
@@ -44,6 +46,7 @@ func (w *Worker) Process(job *models.Job) {
 		log.Printf("workspace create failed: worker_id=%d job_id=%s error=%v", w.ID, job.ID, err)
 		job.Status = "failed"
 		w.Store.Update(job)
+		w.Stats.IncFailed()
 		return
 	}
 	log.Printf("Workspace created: worker_id=%d job_id=%s dir=%s", w.ID, job.ID, dir)
@@ -76,6 +79,7 @@ func (w *Worker) Process(job *models.Job) {
 		log.Printf("Job failed: worker_id=%d job_id=%s reason=unsupported_language language=%s", w.ID, job.ID, job.Language)
 		job.Status = "failed"
 		w.Store.Update(job)
+		w.Stats.IncFailed()
 		return
 	}
 
@@ -84,6 +88,7 @@ func (w *Worker) Process(job *models.Job) {
 		log.Printf("workspace write failed: worker_id=%d job_id=%s file=%s error=%v", w.ID, job.ID, filename, err)
 		job.Status = "failed"
 		w.Store.Update(job)
+		w.Stats.IncFailed()
 		return
 	}
 	log.Printf("Workspace file written: worker_id=%d job_id=%s file=%s", w.ID, job.ID, file)
@@ -100,8 +105,10 @@ func (w *Worker) Process(job *models.Job) {
 
 	if result.Status == "success" {
 		job.Status = "completed"
+		w.Stats.IncCompleted()
 	} else {
 		job.Status = result.Status
+		w.Stats.IncFailed()
 	}
 
 	w.Store.Update(job)

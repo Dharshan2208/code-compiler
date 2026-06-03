@@ -11,6 +11,8 @@ type App struct {
 	Queue *queue.Queue
 	Store *queue.Store
 	Pool  *worker.Pool
+
+	Stats *queue.Stats
 }
 
 func New() *App {
@@ -18,7 +20,9 @@ func New() *App {
 
 	q := queue.NewQueue(100)
 	s := queue.NewStore()
-	p := worker.NewPool(4, q, s)
+	stats := &queue.Stats{}
+	
+	p := worker.NewPool(4, q, s, stats)
 
 	log.Println("Application initialized with queue_size=100 worker_count=4")
 
@@ -26,5 +30,6 @@ func New() *App {
 		Queue: q,
 		Store: s,
 		Pool:  p,
+		Stats: stats,
 	}
 }

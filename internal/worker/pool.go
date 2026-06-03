@@ -10,14 +10,14 @@ type Pool struct {
 	Workers []*Worker
 }
 
-func NewPool(count int, q *queue.Queue, s *queue.Store) *Pool {
+func NewPool(count int, q *queue.Queue, s *queue.Store, stats *queue.Stats) *Pool {
 	pool := &Pool{}
 	log.Printf("creating worker pool: count=%d", count)
 
 	for i := 1; i <= count; i++ {
 		pool.Workers = append(
 			pool.Workers,
-			NewWorker(i, q, s),
+			NewWorker(i, q, s, stats),
 		)
 	}
 

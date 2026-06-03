@@ -33,6 +33,7 @@ func SubmitHandler(application *app.App) http.HandlerFunc {
 		}
 
 		application.Store.Add(job)
+		application.Stats.IncSubmitted()
 		application.Queue.Push(job)
 
 		log.Printf("Job submitted: ID=%s Language=%s", job.ID, job.Language)
