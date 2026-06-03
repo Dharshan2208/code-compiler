@@ -66,3 +66,33 @@ func ResultHandler(application *app.App) http.HandlerFunc {
 		json.NewEncoder(w).Encode(job)
 	}
 }
+
+func HealthHandler(application *app.App) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		submitted, completed, failed := application.Stats.Snapshot()
+
+		resp := models.HealthResponse{
+			Status: "ok",
+
+			QueueLength: len(application.Queue.Jobs),
+			QueueCap:    cap(application.Queue.Jobs),
+
+			Submitted: submitted,
+			Completed: completed,
+			Failed:    failed,
+		}
+
+		log.Printf(
+			"Health returned: status=%s queue_length=%d queue_capacity=%d submitted=%d completed=%d failed=%d",
+			resp.Status,
+			resp.QueueLength,
+			resp.QueueCap,
+			resp.Submitted,
+			resp.Completed,
+			resp.Failed,
+		)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	}
+}

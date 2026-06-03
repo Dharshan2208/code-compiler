@@ -14,6 +14,7 @@ func main() {
 
 	http.HandleFunc("/run", handler.SubmitHandler(application))
 	http.HandleFunc("/result/", handler.ResultHandler(application))
+	http.HandleFunc("/health", handler.HealthHandler(application))
 
 	log.Println("server running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

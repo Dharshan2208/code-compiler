@@ -19,3 +19,10 @@ func (s *Stats) IncCompleted() {
 func (s *Stats) IncFailed() {
 	atomic.AddUint64(&s.Failed, 1)
 }
+
+// adding this so reads are atomic-safe
+func (s *Stats) Snapshot() (submitted uint64, completed uint64, failed uint64) {
+	return atomic.LoadUint64(&s.Submitted),
+		atomic.LoadUint64(&s.Completed),
+		atomic.LoadUint64(&s.Failed)
+}
