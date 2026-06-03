@@ -1,6 +1,10 @@
 package worker
 
-import "github.com/Dharshan2208/code-compiler/internal/queue"
+import (
+	"log"
+
+	"github.com/Dharshan2208/code-compiler/internal/queue"
+)
 
 type Pool struct {
 	Workers []*Worker
@@ -8,6 +12,7 @@ type Pool struct {
 
 func NewPool(count int, q *queue.Queue, s *queue.Store) *Pool {
 	pool := &Pool{}
+	log.Printf("creating worker pool: count=%d", count)
 
 	for i := 1; i <= count; i++ {
 		pool.Workers = append(
@@ -21,6 +26,7 @@ func NewPool(count int, q *queue.Queue, s *queue.Store) *Pool {
 
 func (p *Pool) Start() {
 	for _, worker := range p.Workers {
+		log.Printf("starting worker: id=%d", worker.ID)
 		go worker.Start()
 	}
 }

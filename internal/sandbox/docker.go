@@ -3,6 +3,7 @@ package sandbox
 import (
 	"bytes"
 	"context"
+	"log"
 	"os/exec"
 	"time"
 )
@@ -18,6 +19,8 @@ type Sandbox struct{}
 func (s *Sandbox) Run(image string, workspace string, command []string) Result {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	log.Printf("Sandbox run started: image=%s workspace=%s command=%v", image, workspace, command)
 
 	args := []string{
 		"run",
@@ -44,10 +47,17 @@ func (s *Sandbox) Run(image string, workspace string, command []string) Result {
 
 	err := cmd.Run()
 	if ctx.Err() == context.DeadlineExceeded {
+		log.Printf("sandbox run timed out: image=%s workspace=%s", image, workspace)
 		return Result{
-			Stderr: "executiion timeout",
+			Stderr: "execution timeout",
 			Error:  ctx.Err(),
 		}
+	}
+
+	if err != nil {
+		log.Printf("sandbox run failed: image=%s workspace=%s error=%v stderr=%q", image, workspace, err, stderr.String())
+	} else {
+		log.Printf("sandbox run completed: image=%s workspace=%s stdout_bytes=%d stderr_bytes=%d", image, workspace, stdout.Len(), stderr.Len())
 	}
 
 	return Result{
