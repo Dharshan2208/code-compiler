@@ -56,11 +56,12 @@ func (s *Store) Delete(id string) {
 	defer s.Mu.Unlock()
 
 	delete(s.Jobs, id)
+	log.Printf("store delete: job_id=%s", id)
 }
 
 func (s *Store) Cleanup(ttl time.Duration) int {
 	s.Mu.Lock()
-	defer s.Mu.Lock()
+	defer s.Mu.Unlock()
 
 	removed := 0
 	now := time.Now()

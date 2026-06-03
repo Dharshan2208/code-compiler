@@ -35,9 +35,15 @@ func SubmitHandler(application *app.App) http.HandlerFunc {
 		}
 
 		application.Store.Add(job)
-		application.Stats.IncSubmitted()
-		application.Queue.Push(job)
 
+		if ok := application.Queue.TryPush(job); !ok {
+			application.Store.Delete(job.ID)
+			log.Printf("submit request rejected: reason=queue_full job_id=%s language=%s", job.ID, job.Language)
+			http.Error(w, "queue is full", http.StatusTooManyRequests)
+			return
+		}
+
+		application.Stats.IncSubmitted()
 		log.Printf("Job submitted: ID=%s Language=%s", job.ID, job.Language)
 
 		response := models.SubmitResponse{
