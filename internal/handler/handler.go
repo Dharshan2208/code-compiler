@@ -44,7 +44,7 @@ func SubmitHandler(application *app.App) http.HandlerFunc {
 		}
 
 		application.Stats.IncSubmitted()
-		log.Printf("Job submitted: ID=%s Language=%s", job.ID, job.Language)
+		log.Printf("job submitted: job_id=%s language=%s", job.ID, job.Language)
 
 		response := models.SubmitResponse{
 			JobID:  jobID,
@@ -59,7 +59,7 @@ func SubmitHandler(application *app.App) http.HandlerFunc {
 func ResultHandler(application *app.App) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/result/")
-		log.Printf("Result requested: ID=%s", id)
+		log.Printf("result requested: job_id=%s", id)
 
 		job, exists := application.Store.Get(id)
 		if !exists {
@@ -68,7 +68,7 @@ func ResultHandler(application *app.App) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("Result returned: ID=%s status=%s", job.ID, job.Status)
+		log.Printf("result returned: job_id=%s status=%s", job.ID, job.Status)
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(job)

@@ -9,12 +9,15 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetPrefix("[api] ")
+
 	application := app.NewAPI()
 
 	http.HandleFunc("/run", handler.SubmitHandler(application))
 	http.HandleFunc("/result/", handler.ResultHandler(application))
 	http.HandleFunc("/health", handler.HealthHandler(application))
 
-	log.Println("api running on :8080")
+	log.Println("api server starting: addr=:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

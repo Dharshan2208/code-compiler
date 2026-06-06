@@ -144,6 +144,8 @@ func (q *Queue) ProcessingLen() int64 {
 }
 
 func (q *Queue) StartRecovery(s *store.RedisStore, timeout time.Duration) {
+	log.Printf("queue recovery started: timeout=%s interval=%s", timeout, time.Minute)
+
 	go func() {
 		//  Tickeris a built-in function used to execute an action repeatedly at regular time intervals.
 		// It instantiates and returns a new *time.Ticker struct containing a channel (C) that receives continuous time signals

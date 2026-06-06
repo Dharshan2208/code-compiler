@@ -22,15 +22,15 @@ func New() *App {
 }
 
 func NewAPI() *App {
-	return newApp(0)
+	return newApp("api", 0)
 }
 
 func NewWorker() *App {
-	return newApp(4)
+	return newApp("worker", 4)
 }
 
-func newApp(workerCount int) *App {
-	log.Println("Initializing application...")
+func newApp(role string, workerCount int) *App {
+	log.Printf("application initializing: role=%s", role)
 
 	redisClient := redisclient.New()
 	q := queue.NewQueue(redisClient, 100)
@@ -42,7 +42,7 @@ func newApp(workerCount int) *App {
 		p = worker.NewPool(workerCount, q, s, stats)
 	}
 
-	log.Printf("Application initialized with queue_size=100 worker_count=%d", workerCount)
+	log.Printf("application initialized: role=%s queue_size=100 worker_count=%d", role, workerCount)
 
 	return &App{
 		Queue: q,

@@ -9,12 +9,15 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetPrefix("[worker] ")
+
 	application := app.NewWorker()
 
 	cleanup.Start(application.Store, 15*time.Minute)
 	application.Queue.StartRecovery(application.Store, 5*time.Minute)
 	application.Pool.Start()
 
-	log.Println("Worker running")
+	log.Println("worker service running")
 	select {}
 }

@@ -28,7 +28,7 @@ func NewWorker(id int, q *queue.Queue, s *store.RedisStore, stats *queue.Stats) 
 }
 
 func (w *Worker) Start() {
-	log.Printf("Worker started: id=%d", w.ID)
+	log.Printf("worker started: worker_id=%d", w.ID)
 
 	for {
 		// job := w.Queue.Pop()
@@ -39,7 +39,7 @@ func (w *Worker) Start() {
 }
 
 func (w *Worker) Process(job *models.Job) {
-	log.Printf("Worker processing job: worker_id=%d job_id=%s language=%s", w.ID, job.ID, job.Language)
+	log.Printf("job processing started: worker_id=%d job_id=%s language=%s", w.ID, job.ID, job.Language)
 
 	job.Status = "running"
 	job.ClaimedAt = time.Now()
@@ -53,7 +53,7 @@ func (w *Worker) Process(job *models.Job) {
 		w.Stats.IncFailed()
 		return
 	}
-	log.Printf("Workspace created: worker_id=%d job_id=%s dir=%s", w.ID, job.ID, dir)
+	log.Printf("workspace created: worker_id=%d job_id=%s dir=%s", w.ID, job.ID, dir)
 
 	defer func() {
 		if err := workspace.Cleanup(dir); err != nil {
@@ -61,7 +61,7 @@ func (w *Worker) Process(job *models.Job) {
 			return
 		}
 
-		log.Printf("Workspace cleaned: worker_id=%d job_id=%s dir=%s", w.ID, job.ID, dir)
+		log.Printf("workspace cleaned: worker_id=%d job_id=%s dir=%s", w.ID, job.ID, dir)
 	}()
 
 	var (
@@ -80,7 +80,7 @@ func (w *Worker) Process(job *models.Job) {
 		execLang = executor.CppExecutor{}
 
 	default:
-		log.Printf("Job failed: worker_id=%d job_id=%s reason=unsupported_language language=%s", w.ID, job.ID, job.Language)
+		log.Printf("job failed: worker_id=%d job_id=%s reason=unsupported_language language=%s", w.ID, job.ID, job.Language)
 		job.Status = "failed"
 		w.Store.Update(job)
 		w.Stats.IncFailed()
@@ -95,7 +95,7 @@ func (w *Worker) Process(job *models.Job) {
 		w.Stats.IncFailed()
 		return
 	}
-	log.Printf("Workspace file written: worker_id=%d job_id=%s file=%s", w.ID, job.ID, file)
+	log.Printf("workspace file written: worker_id=%d job_id=%s file=%s", w.ID, job.ID, file)
 
 	result := execLang.Execute(file, dir)
 
@@ -117,5 +117,5 @@ func (w *Worker) Process(job *models.Job) {
 
 	job.CompletedAt = time.Now()
 	w.Store.Update(job)
-	log.Printf("Job finished: worker_id=%d job_id=%s status=%s language=%s", w.ID, job.ID, job.Status, job.Language)
+	log.Printf("job finished: worker_id=%d job_id=%s status=%s language=%s", w.ID, job.ID, job.Status, job.Language)
 }
