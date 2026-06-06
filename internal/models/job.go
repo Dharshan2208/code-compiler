@@ -5,7 +5,7 @@ import "time"
 type Job struct {
 	ID       string `json:"id"`
 	Language string `json:"language"`
-	Code     string `json:"-"`
+	Code     string `json:"code"`
 	Status   string `json:"status"`
 
 	CreatedAt   time.Time `json:"created_at"`

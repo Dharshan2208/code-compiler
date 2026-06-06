@@ -1,0 +1,29 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    command: /bin/api
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+
+  worker:
+    build: .
+    command: /bin/worker
+    environment:
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /app/temp:/app/temp
+
+# Here we are using the volumes bcoz the sandbox logic needs the access the host docker engine
+# ./temp is mounted to woker so now docker can also see the same files from the host side
