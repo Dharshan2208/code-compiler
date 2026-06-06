@@ -70,8 +70,10 @@ func ResultHandler(application *app.App) http.HandlerFunc {
 
 		log.Printf("result returned: job_id=%s status=%s", job.ID, job.Status)
 
+		response := models.NewJobResponse(job)
+
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(job)
+		json.NewEncoder(w).Encode(response)
 	}
 }
 
