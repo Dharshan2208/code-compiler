@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/store"
+	"github.com/Dharshan2208/judex/internal/store"
 )
 
 func Start(s *store.RedisStore, ttl time.Duration) {

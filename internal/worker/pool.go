@@ -3,8 +3,8 @@ package worker
 import (
 	"log"
 
-	"github.com/Dharshan2208/code-compiler/internal/queue"
-	"github.com/Dharshan2208/code-compiler/internal/store"
+	"github.com/Dharshan2208/judex/internal/queue"
+	"github.com/Dharshan2208/judex/internal/store"
 )
 
 type Pool struct {

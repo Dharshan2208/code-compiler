@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/sandbox"
+	"github.com/Dharshan2208/judex/internal/sandbox"
 )
 
 type CppExecutor struct{}

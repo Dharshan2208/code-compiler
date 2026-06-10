@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/models"
+	"github.com/Dharshan2208/judex/internal/models"
 )
 
 type Store struct {

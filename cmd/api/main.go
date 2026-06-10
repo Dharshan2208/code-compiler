@@ -4,10 +4,10 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/Dharshan2208/code-compiler/internal/app"
-	"github.com/Dharshan2208/code-compiler/internal/handler"
-	"github.com/Dharshan2208/code-compiler/internal/limiter"
-	"github.com/Dharshan2208/code-compiler/internal/middleware"
+	"github.com/Dharshan2208/judex/internal/app"
+	"github.com/Dharshan2208/judex/internal/handler"
+	"github.com/Dharshan2208/judex/internal/limiter"
+	"github.com/Dharshan2208/judex/internal/middleware"
 )
 
 func main() {

@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/Dharshan2208/code-compiler/internal/limiter"
+	"github.com/Dharshan2208/judex/internal/limiter"
 )
 
 func RateLimit(limiter *limiter.RedisManager) func(http.Handler) http.Handler {

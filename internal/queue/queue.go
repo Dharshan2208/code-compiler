@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/models"
-	"github.com/Dharshan2208/code-compiler/internal/store"
+	"github.com/Dharshan2208/judex/internal/models"
+	"github.com/Dharshan2208/judex/internal/store"
 	"github.com/redis/go-redis/v9"
 )
 

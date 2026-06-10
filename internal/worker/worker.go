@@ -4,11 +4,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/executor"
-	"github.com/Dharshan2208/code-compiler/internal/models"
-	"github.com/Dharshan2208/code-compiler/internal/queue"
-	"github.com/Dharshan2208/code-compiler/internal/store"
-	"github.com/Dharshan2208/code-compiler/internal/workspace"
+	"github.com/Dharshan2208/judex/internal/executor"
+	"github.com/Dharshan2208/judex/internal/models"
+	"github.com/Dharshan2208/judex/internal/queue"
+	"github.com/Dharshan2208/judex/internal/store"
+	"github.com/Dharshan2208/judex/internal/workspace"
 )
 
 type Worker struct {

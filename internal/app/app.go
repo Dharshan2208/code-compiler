@@ -3,10 +3,10 @@ package app
 import (
 	"log"
 
-	"github.com/Dharshan2208/code-compiler/internal/queue"
-	redisclient "github.com/Dharshan2208/code-compiler/internal/redis"
-	"github.com/Dharshan2208/code-compiler/internal/store"
-	"github.com/Dharshan2208/code-compiler/internal/worker"
+	"github.com/Dharshan2208/judex/internal/queue"
+	redisclient "github.com/Dharshan2208/judex/internal/redis"
+	"github.com/Dharshan2208/judex/internal/store"
+	"github.com/Dharshan2208/judex/internal/worker"
 	"github.com/redis/go-redis/v9"
 )
 

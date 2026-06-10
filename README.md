@@ -130,8 +130,8 @@ sequenceDiagram
 ### Clone
 
 ```bash
-git clone https://github.com/Dharshan2208/code-compiler.git
-cd code-compiler
+git clone https://github.com/Dharshan2208/judex.git
+cd judex
 go mod download
 ```
 
@@ -148,7 +148,7 @@ docker build -t compiler-go    -f docker/go/Dockerfile    docker/go
 ### Start Redis
 
 ```bash
-docker run --rm --name code-compiler-redis -p 6379:6379 redis:7-alpine
+docker run --rm --name judex-redis -p 6379:6379 redis:7-alpine
 ```
 
 ### Run the API

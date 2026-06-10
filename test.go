@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/Dharshan2208/code-compiler/internal/sandbox"
+	"github.com/Dharshan2208/judex/internal/sandbox"
 )
 
 func main() {
@@ -11,7 +11,7 @@ func main() {
 
 	result := sb.Run(
 		"compiler-python",
-		"/home/chifuyu/Coding/Self/Projects/code-compiler/test",
+		"/home/chifuyu/Coding/Self/Projects/judex/test",
 		[]string{
 			"python3",
 			"main.py",

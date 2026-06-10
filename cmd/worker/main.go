@@ -4,8 +4,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/Dharshan2208/code-compiler/internal/app"
-	"github.com/Dharshan2208/code-compiler/internal/cleanup"
+	"github.com/Dharshan2208/judex/internal/app"
+	"github.com/Dharshan2208/judex/internal/cleanup"
 )
 
 func main() {

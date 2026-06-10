@@ -8,7 +8,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Dharshan2208/code-compiler/internal/models"
+	"github.com/Dharshan2208/judex/internal/models"
 )
 
 const jobTTL = 24 * time.Hour

@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Dharshan2208/code-compiler/internal/app"
-	"github.com/Dharshan2208/code-compiler/internal/models"
+	"github.com/Dharshan2208/judex/internal/app"
+	"github.com/Dharshan2208/judex/internal/models"
 )
 
 func SubmitHandler(application *app.App) http.HandlerFunc {
