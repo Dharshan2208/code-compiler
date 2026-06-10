@@ -1,30 +1,133 @@
 # Code Compiler
 
-> A multi-language code execution engine supporting Python, C, C++, Go, and Java with Docker-based sandbox isolation.
+> A distributed, multi-language code execution engine with Docker based sandbox isolation. Inspired by platforms like LeetCode, HackerRank, and Codeforces.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Client["Client / Frontend"]
+
+    RateLimiter["Token Bucket Rate Limiter<br/>(Redis backed)"]
+
+    API["API Server :8080"]
+    Worker["Worker Service<br/>4 goroutines"]
+
+    Redis[("Redis<br/>Queue + Store + Token Buckets")]
+
+    Docker["Docker Engine"]
+
+    subgraph Sandbox["Sandbox Containers"]
+        Python["compiler-python"]
+        C["compiler-c"]
+        CPP["compiler-cpp"]
+        Go["compiler-go"]
+        Java["compiler-java"]
+    end
+
+    Client -->|"POST /run"| RateLimiter
+    RateLimiter -->|"Token available"| API
+    RateLimiter -.->|"429 Too Many Requests"| Client
+
+    Client -->|"GET /result/{id}"| API
+    Client -->|"GET /health"| API
+
+    RateLimiter <-->|"Read / Update bucket"| Redis
+
+    API -->|"Enqueue job"| Redis
+
+    Worker -->|"Blocking claim"| Redis
+    Worker -->|"Store execution result"| Redis
+
+    Worker -->|"docker run<br/>256 MB · 1 CPU · no network"| Docker
+
+    Docker --> Python
+    Docker --> C
+    Docker --> CPP
+    Docker --> Go
+    Docker --> Java
+```
 
 ## Overview
 
-This is a small distributed online judge(Like leetcode or hackrank or codeforces) style execution backend. It accepts source code over HTTP, stores jobs in Redis, queues them for asynchronous processing, and runs each submission inside a short-lived Docker container with CPU, memory, process, filesystem, network, and Linux capability restrictions.
+This is a small but production oriented **online judge execution backend**. It accepts source code via HTTP requests, queues each submission in Redis, and processes them asynchronously using worker services. Each job is picked up from the queue and executed inside a short lived, heavily restricted Docker container with strict CPU, memory, filesystem, process, and network limitations to ensure isolation and security.
 
-The project is intended for learrning how developers build coding platforms, internal code runners and programming practice tools.
+This project is intended for learning how real world coding platforms and internal code execution systems are built with concepts like distributed job queues, sandboxing, containerized execution, concurrency, and rate limited request handling in a scalable architecture.
+
+## How It Works
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+    participant Worker
+    participant Docker
+
+    Client->>API: POST /run { language, code }
+
+    Note over API: Rate limit check (Redis token bucket)
+    API->>Redis: EVAL rate_limit_lua
+    Redis-->>API: allowed / denied
+
+    alt Rate limited
+        API-->>Client: 429 Too Many Requests
+    else Accepted
+        API->>Redis: SET job:{id} status=pending TTL 24h
+        API->>Redis: LPUSH pending_jobs
+        API-->>Client: 200 { job_id, status: "pending" }
+    end
+
+    Note over Worker: BLMOVE blocks until a job arrives
+    Worker->>Redis: BLMOVE pending_jobs → processing_jobs
+    Worker->>Redis: SET job:{id} status=running
+
+    Worker->>Worker: Create temp workspace + write source file
+    Worker->>Docker: docker run (256mb, 1cpu, no-net, read-only)
+
+    Docker->>Worker: stdout, stderr, exit code, timeout
+    Worker->>Redis: SET job:{id} result + final status
+    Worker->>Redis: LREM processing_jobs 1 <raw>
+
+    Client->>API: GET /result/{job_id}
+    API->>Redis: GET job:{id}
+    API-->>Client: 200 { status, stdout, stderr, ... }
+```
 
 ## Key Features
 
 | Feature | Details |
-| --- | --- |
-| HTTP submission API | Submit code to `/run` and receive a job ID. |
-| Async result polling | Fetch status and execution output from `/result/{job_id}`. |
-| Health endpoint | Reports queue length, capacity, and in-process counters. |
-| Redis-backed job storage | Jobs are stored as JSON under `job:{id}` with a 24-hour Redis TTL. |
-| Redis-backed FIFO queue | Uses `LPUSH` for enqueue and `BLMOVE RIGHT LEFT` for oldest-first claiming. |
-| Worker pool | Worker service starts 4 concurrent workers. |
-| Docker sandboxing | Enforces timeout, resource limits, read-only root filesystem, no network, dropped capabilities, and no-new-privileges. |
-| Stuck job recovery | Worker scans processing jobs every minute and requeues jobs running longer than 5 minutes. |
-| Completed job cleanup | Worker deletes completed Redis job records older than 15 minutes. |
+|---|---|
+| **HTTP API** | Submit code to `/run`, poll results from `/result/{id}`, check heh at `/health` |
+| **Async processing** | Jobs are queued in Redis and processed by a pool of background workers |
+| **Redis backed queue** | FIFO ordering via `LPUSH` / blocking `BLMOVE` with atomic claim semantics |
+| **Redis job store** | Full job state persisted as JSON with 24-hour TTL |
+| **Redis rate limiter** | Distributed token bucket (10 burst, 1/sec refill) via Lua script — survives restarts and scales across instances |
+| **Docker sandbox** | Each execution runs in a fresh container with 256 MB RAM, 1 CPU, no network, read-only rootfs, no capabilities, and `no-new-privileges` |
+| **Multi-language** | Python, C, C++, Go, and Java |
+| **Stuck job recovery** | Periodic scan requeues jobs claimed for >5 minutes |
+| **Completed job cleanup** | Background goroutine deletes finished job records older than 15 minutes |
+| **Horizontal scaling** | Stateless API; add more instances behind a load balancer. Rate limiter and queue are shared via Redis |
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Go 1.25 |
+| HTTP | `net/http` (stdlib) |
+| Queue & Store | Redis 7 (via `go-redis/redis/v9`) |
+| Sandbox | Docker (sibling containers via `/var/run/docker.sock`) |
+| Deployment | Docker Compose |
 
 ## Getting Started
 
-### Installation
+### Prerequisites
+
+- Go 1.25+
+- Docker (for sandbox execution)
+- Redis 7+ (or the Docker image)
+
+### Clone
 
 ```bash
 git clone https://github.com/Dharshan2208/code-compiler.git
@@ -32,39 +135,31 @@ cd code-compiler
 go mod download
 ```
 
-### Environment Variables
-
-Create a `.env` file for local development if Redis is not running at the default address:
-
-```bash
-REDIS_ADDR=localhost:6379
-```
-
-### Local Development Setup
-
-Build the sandbox images expected by the executors:
+### Build Sandbox Images
 
 ```bash
 docker build -t compiler-python -f docker/python/Dockerfile docker/python
-docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
-docker build -t compiler-c -f docker/c/Dockerfile docker/c
-docker build -t compiler-java -f docker/java/Dockerfile docker/java
-docker build -t compiler-go -f docker/go/Dockerfile docker/go
+docker build -t compiler-cpp   -f docker/cpp/Dockerfile   docker/cpp
+docker build -t compiler-c     -f docker/c/Dockerfile     docker/c
+docker build -t compiler-java  -f docker/java/Dockerfile  docker/java
+docker build -t compiler-go    -f docker/go/Dockerfile    docker/go
 ```
 
-Start Redis:
+### Start Redis
 
 ```bash
 docker run --rm --name code-compiler-redis -p 6379:6379 redis:7-alpine
 ```
 
-In one terminal, run the API:
+### Run the API
 
 ```bash
 go run ./cmd/api
 ```
 
-In another terminal, run the worker:
+### Run the Worker
+
+In a separate terminal:
 
 ```bash
 go run ./cmd/worker
@@ -73,103 +168,56 @@ go run ./cmd/worker
 ## Configuration
 
 | Variable | Required | Default | Used by | Description |
-| --- | --- | --- | --- | --- |
-| `REDIS_ADDR` | No | `localhost:6379` | API, worker | Redis server address used by `redis/go-redis/v9`. Docker Compose sets this to `redis:6379`. |
+|---|---|---|---|---|
+| `REDIS_ADDR` | No | `localhost:6379` | API, Worker | Redis server address. Docker Compose sets this to `redis:6379` automatically |
 
-## Running the Project
-
-### Development Mode
+Create a `.env` file to override:
 
 ```bash
-docker build -t compiler-python -f docker/python/Dockerfile docker/python
-docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
-docker build -t compiler-c -f docker/c/Dockerfile docker/c
-docker build -t compiler-java -f docker/java/Dockerfile docker/java
-docker build -t compiler-go -f docker/go/Dockerfile docker/go
-docker run --rm --name code-compiler-redis -p 6379:6379 redis:7-alpine
+REDIS_ADDR=my-redis-host:6379
+```
+
+## Running Modes
+
+### Development (standalone binaries)
+
+```bash
+# Terminal 1 — API
 go run ./cmd/api
+
+# Terminal 2 — Worker
 go run ./cmd/worker
 ```
 
-### Production Mode
-
-Build standalone binaries:
+### Production (standalone binaries)
 
 ```bash
 go build -o bin/api ./cmd/api
 go build -o bin/worker ./cmd/worker
-```
 
-Run them with access to Redis and Docker:
-
-```bash
 REDIS_ADDR=localhost:6379 ./bin/api
 REDIS_ADDR=localhost:6379 ./bin/worker
 ```
 
-### Docker Setup
-
-Build the service image:
+### Docker Compose
 
 ```bash
-docker build -t code-compiler .
-```
-
-Build required sandbox images:
-
-```bash
-docker build -t compiler-python -f docker/python/Dockerfile docker/python
-docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
-docker build -t compiler-c -f docker/c/Dockerfile docker/c
-docker build -t compiler-java -f docker/java/Dockerfile docker/java
-docker build -t compiler-go -f docker/go/Dockerfile docker/go
-```
-
-Run the API container:
-
-```bash
-docker run --rm -p 8080:8080 -e REDIS_ADDR=host.docker.internal:6379 code-compiler /bin/api
-```
-
-Run the worker container with Docker socket and workspace access:
-
-```bash
-docker run --rm \
-  -e REDIS_ADDR=host.docker.internal:6379 \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /app/temp:/app/temp \
-  code-compiler /bin/worker
-```
-
-### Docker Compose Setup
-
-The included Compose file runs Redis, API, and worker services:
-
-```bash
-docker build -t compiler-python -f docker/python/Dockerfile docker/python
-docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
-mkdir -p /app/temp
+mkdir -p /app/temp   # required for Docker socket bind mount
 docker compose up --build
 ```
 
-> The current `docker-compose.yml` mounts `/app/temp:/app/temp`. This absolute host path must exist because the worker uses the host Docker engine through `/var/run/docker.sock`, and sandbox containers need to see the same workspace path.
+> The `docker-compose.yml` mounts `/app/temp:/app/temp` because the worker uses the host Docker engine through `/var/run/docker.sock`. Sandbox containers need to see the same workspace path.
 
 ## API Documentation
 
 ### `POST /run`
 
-Submits a code execution job. The handler does not currently enforce HTTP methods, but clients should use `POST`.
+Submit a code execution job.
 
 | Field | Value |
-| --- | --- |
+|---|---|
 | Route | `/run` |
-| Request content type | `application/json` |
-| Supported `language` values | `python`, `cpp` |
-| Success status | `200 OK` |
-| Queue full status | `429 Too Many Requests` |
-| Invalid JSON status | `400 Bad Request` |
-
-Request body:
+| Content-Type | `application/json` |
 
 ```json
 {
@@ -177,8 +225,6 @@ Request body:
   "code": "print(\"Hello from Python\")"
 }
 ```
-
-Response example:
 
 ```json
 {
@@ -189,16 +235,14 @@ Response example:
 
 ### `GET /result/{job_id}`
 
-Returns the current job state and, once finished, the execution result. The handler does not currently enforce HTTP methods, but clients should use `GET`.
+Poll for job status and execution output.
 
 | Field | Value |
-| --- | --- |
+|---|---|
 | Route | `/result/{job_id}` |
-| Success status | `200 OK` |
-| Missing job status | `404 Not Found` |
-| Possible job statuses | `pending`, `running`, `completed`, `failed`, `timeout`, `compile_error`, `runtime_error` |
+| Status values | `pending`, `running`, `completed`, `failed`, `timeout`, `compile_error`, `runtime_error` |
 
-Response example for a completed Python job:
+**Completed Python job:**
 
 ```json
 {
@@ -218,7 +262,7 @@ Response example for a completed Python job:
 }
 ```
 
-Response example for a C++ compile error:
+**C++ compile error:**
 
 ```json
 {
@@ -240,14 +284,12 @@ Response example for a C++ compile error:
 
 ### `GET /health`
 
-Returns service health, Redis queue length, queue capacity, and in-memory counters for the current process. The handler does not currently enforce HTTP methods, but clients should use `GET`.
+Service health and queue metrics.
 
 | Field | Value |
-| --- | --- |
+|---|---|
 | Route | `/health` |
-| Success status | `200 OK` |
-
-Response example:
+| Success | `200 OK` |
 
 ```json
 {
@@ -260,36 +302,38 @@ Response example:
 }
 ```
 
-## Workflow
+## Rate Limiting
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Redis
-    participant Worker
-    participant Docker
+The `/run` endpoint is protected by a **distributed token bucket** implemented as a Redis Lua script:
 
-    Client->>API: POST /run { language, code }
-    API->>Redis: SET job:{id} status=pending
-    API->>Redis: LPUSH pending_jobs
-    API-->>Client: { job_id, status: "pending" }
+- **Capacity**: 10 tokens (burst of 10 requests)
+- **Refill rate**: 1 token per second (sustained throughput)
+- **Scope**: Per client IP
+- **Storage**: Redis Hash key `ratelimit:{ip}` with 30 minute TTL
+- **Atomicity**: The entire check-and-consume runs inside a single Lua script on Redis — safe across multiple API instances
 
-    Worker->>Redis: BLMOVE pending_jobs processing_jobs
-    Worker->>Redis: SET job:{id} status=running
-    Worker->>Worker: Create temp workspace and write main.py/main.cpp
-    Worker->>Docker: docker run compiler-python/compiler-cpp
-    Docker-->>Worker: stdout, stderr, exit status, timeout
-    Worker->>Redis: SET job:{id} result + final status
-    Worker->>Redis: LREM processing_jobs
+Because the state lives in Redis, rate limits survive API restarts and work correctly behind a load balancer with multiple API replicas.
 
-    Client->>API: GET /result/{job_id}
-    API->>Redis: GET job:{id}
-    API-->>Client: job status and result
-```
+## Sandbox Security
+
+Each execution runs in a Docker container with the following restrictions:
+
+| Constraint | Value |
+|---|---|
+| Memory | 256 MB (`--memory=256m`) |
+| CPU | 1 core (`--cpus=1`) |
+| Processes | 64 max (`--pids-limit=64`) |
+| Network | None (`--network=none`) |
+| Filesystem | Read-only root (`--read-only`) |
+| Temp | 64 MB tmpfs at `/tmp` |
+| Privileges | None (`--security-opt=no-new-privileges`) |
+| Capabilities | All dropped (`--cap-drop=ALL`) |
+| Timeout | 10 seconds (context deadline) |
+
 ## TODO
 
-- Have to deploy this project in a vps
-- Have to make a frontend for this 
-- Implement more language support like c,java,go and more
-- More better code or architecture
+- [ ] Deploy to a VPS
+- [ ] Build a frontend
+- [ ] Add more languages (Rust, JS..thats all ig)
+- [ ] Improve the job queue with priority levels
+- [ ] Write integration tests
