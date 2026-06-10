@@ -1,4 +1,4 @@
-# Code Compiler
+# Judex
 
 > A distributed, multi-language code execution engine with Docker based sandbox isolation. Inspired by platforms like LeetCode, HackerRank, and Codeforces.
 
