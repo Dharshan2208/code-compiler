@@ -16,7 +16,7 @@ func main() {
 
 	application := app.NewAPI()
 
-	ratelimiter := limiter.NewManager(10, 1)
+	ratelimiter := limiter.NewRedisManager(application.Redis, 10, 1)
 
 	http.Handle(
 		"/run",

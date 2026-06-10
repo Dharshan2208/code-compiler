@@ -6,7 +6,7 @@ import (
 	"github.com/Dharshan2208/code-compiler/internal/limiter"
 )
 
-func RateLimit(limiter *limiter.Manager) func(http.Handler) http.Handler {
+func RateLimit(limiter *limiter.RedisManager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := getClientIP(r)

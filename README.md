@@ -1,6 +1,6 @@
 # Code Compiler
 
-> An execution service for running Python and C++ submissions in isolated Docker sandboxes.
+> A multi-language code execution engine supporting Python, C, C++, Go, and Java with Docker-based sandbox isolation.
 
 ## Overview
 
@@ -18,8 +18,6 @@ The project is intended for learrning how developers build coding platforms, int
 | Redis-backed job storage | Jobs are stored as JSON under `job:{id}` with a 24-hour Redis TTL. |
 | Redis-backed FIFO queue | Uses `LPUSH` for enqueue and `BLMOVE RIGHT LEFT` for oldest-first claiming. |
 | Worker pool | Worker service starts 4 concurrent workers. |
-| Python execution | Runs `python3 main.py` in the `compiler-python` image. |
-| C++ execution | Compiles with `g++ main.cpp -o app`, then runs `./app` in the `compiler-cpp` image. |
 | Docker sandboxing | Enforces timeout, resource limits, read-only root filesystem, no network, dropped capabilities, and no-new-privileges. |
 | Stuck job recovery | Worker scans processing jobs every minute and requeues jobs running longer than 5 minutes. |
 | Completed job cleanup | Worker deletes completed Redis job records older than 15 minutes. |
@@ -49,6 +47,9 @@ Build the sandbox images expected by the executors:
 ```bash
 docker build -t compiler-python -f docker/python/Dockerfile docker/python
 docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
+docker build -t compiler-c -f docker/c/Dockerfile docker/c
+docker build -t compiler-java -f docker/java/Dockerfile docker/java
+docker build -t compiler-go -f docker/go/Dockerfile docker/go
 ```
 
 Start Redis:
@@ -82,6 +83,9 @@ go run ./cmd/worker
 ```bash
 docker build -t compiler-python -f docker/python/Dockerfile docker/python
 docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
+docker build -t compiler-c -f docker/c/Dockerfile docker/c
+docker build -t compiler-java -f docker/java/Dockerfile docker/java
+docker build -t compiler-go -f docker/go/Dockerfile docker/go
 docker run --rm --name code-compiler-redis -p 6379:6379 redis:7-alpine
 go run ./cmd/api
 go run ./cmd/worker
@@ -116,6 +120,9 @@ Build required sandbox images:
 ```bash
 docker build -t compiler-python -f docker/python/Dockerfile docker/python
 docker build -t compiler-cpp -f docker/cpp/Dockerfile docker/cpp
+docker build -t compiler-c -f docker/c/Dockerfile docker/c
+docker build -t compiler-java -f docker/java/Dockerfile docker/java
+docker build -t compiler-go -f docker/go/Dockerfile docker/go
 ```
 
 Run the API container:

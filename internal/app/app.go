@@ -7,9 +7,11 @@ import (
 	redisclient "github.com/Dharshan2208/code-compiler/internal/redis"
 	"github.com/Dharshan2208/code-compiler/internal/store"
 	"github.com/Dharshan2208/code-compiler/internal/worker"
+	"github.com/redis/go-redis/v9"
 )
 
 type App struct {
+	Redis *redis.Client
 	Queue *queue.Queue
 	Store *store.RedisStore
 	Pool  *worker.Pool
@@ -45,6 +47,7 @@ func newApp(role string, workerCount int) *App {
 	log.Printf("application initialized: role=%s queue_size=100 worker_count=%d", role, workerCount)
 
 	return &App{
+		Redis: redisClient,
 		Queue: q,
 		Store: s,
 		Pool:  p,
