@@ -3,9 +3,9 @@ package sandbox
 import (
 	"bytes"
 	"context"
-	"log"
-	"os/exec"
-	"time"
+
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/pkg/stdcopy"
 )
 
 type Result struct {
@@ -14,65 +14,34 @@ type Result struct {
 	Error  error
 }
 
-type Sandbox struct{}
+type Sandbox struct {
+	Container *WarmContainer
+	Manager   *PoolManager
+}
 
-func (s *Sandbox) Run(image string, workspace string, command []string) Result {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	log.Printf("Sandbox run started: image=%s workspace=%s command=%v", image, workspace, command)
-
-	args := []string{
-		"run",
-		"--rm",
-
-		"--memory=256m",
-		"--cpus=1",
-		"--pids-limit=64",
-
-		"--network=none",
-
-		"--read-only",
-		"--tmpfs", "/tmp:size=64m",
-
-		"-e", "GOCACHE=/tmp/go-cache",
-
-		"--security-opt=no-new-privileges",
-		"--cap-drop=ALL",
-
-		"-v",
-		workspace + ":/workspace",
-
-		"-w",
-		"/workspace",
-
-		image,
+func (s *Sandbox) Execute(ctx context.Context, command []string) Result {
+	execConfig := container.ExecOptions{
+		User:         "1000", // Execute as the standard user
+		Cmd:          command,
+		AttachStdout: true,
+		AttachStderr: true,
+		WorkingDir:   "/workspace",
 	}
 
-	args = append(args, command...)
-
-	cmd := exec.CommandContext(ctx, "docker", args...)
-
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-	if ctx.Err() == context.DeadlineExceeded {
-		log.Printf("sandbox run timed out: image=%s workspace=%s", image, workspace)
-		return Result{
-			Stderr: "execution timeout",
-			Error:  ctx.Err(),
-		}
-	}
-
+	exec, err := s.Manager.cli.ContainerExecCreate(ctx, s.Container.ID, execConfig)
 	if err != nil {
-		log.Printf("sandbox run failed: image=%s workspace=%s error=%v stderr=%q", image, workspace, err, stderr.String())
-	} else {
-		log.Printf("sandbox run completed: image=%s workspace=%s stdout_bytes=%d stderr_bytes=%d", image, workspace, stdout.Len(), stderr.Len())
+		return Result{Error: err}
 	}
+
+	resp, err := s.Manager.cli.ContainerExecAttach(ctx, exec.ID, container.ExecStartOptions{})
+	if err != nil {
+		return Result{Error: err}
+	}
+	defer resp.Close()
+
+	var stdout, stderr bytes.Buffer
+	// stdcopy helps split the multiplexed stream from Docker back into stdout and stderr
+	_, err = stdcopy.StdCopy(&stdout, &stderr, resp.Reader)
 
 	return Result{
 		Stdout: stdout.String(),
